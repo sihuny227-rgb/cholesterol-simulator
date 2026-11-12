@@ -1,0 +1,621 @@
+<title>콜레스테롤 대사 시뮬레이터</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="지단백 트럭 비유로 정상 상태, 식사, 포화지방, 비만·폐경·갑상선기능저하증에서의 콜레스테롤 대사를 시뮬레이션합니다.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hahmlet:wght@500;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+<style>
+/* 레이아웃: 시나리오 레일 → [지단백 물류 지도 | 혈중 지질·기전] → 추세 차트 → [간 조절 계기 · 약물 · 생리 다이얼] */
+:root {
+  --bg: #ECF0EF;
+  --panel: #FAFBFA;
+  --panel-2: #F0F3F2;
+  --ink: #142321;
+  --ink-2: #3D4E4B;
+  --muted: #667875;
+  --line: #CED8D5;
+  --accent: #1D4F91;
+  --accent-ink: #FFFFFF;
+  --accent-soft: #DDE6F3;
+  --vessel: #F2DADA;
+  --vessel-edge: #CC9A98;
+  --vessel-line: #E3BDBB;
+  --liver: #EEDDD6;
+  --liver-edge: #A6705F;
+  --gut: #F3E6D5;
+  --gut-edge: #B78C5C;
+  --fat: #F5EDCD;
+  --fat-edge: #B39A43;
+  --tissue: #DEE9E3;
+  --tissue-edge: #6C9283;
+  --intima: #F2DFE2;
+  --intima-edge: #B07280;
+  --p-cm: #E2B13E;
+  --p-core: #FFF6D6;
+  --p-vldl: #E0782A;
+  --p-idl: #C9562E;
+  --p-rem: #B98A2A;
+  --p-ldl: #B32336;
+  --p-ldl-ox: #6E2A2F;
+  --p-hdl: #13897A;
+  --p-ffa: #A88A28;
+  --p-pcsk9: #7446C2;
+  --p-bile: #5E8A2C;
+  --p-stroke: rgba(20, 35, 33, 0.28);
+  --good: #2C7A4B;
+  --good-soft: #DCEFE2;
+  --ok: #4B6A86;
+  --ok-soft: #E2EAF2;
+  --warn: #9C620D;
+  --warn-soft: #F6E8CF;
+  --bad: #B3261E;
+  --bad-soft: #F7DAD6;
+  --f-display: "Hahmlet", "Noto Serif KR", "Apple SD Gothic Neo", serif;
+  --f-body: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --f-num: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0E1413; --panel: #151D1C; --panel-2: #1B2524; --ink: #E3EBE9; --ink-2: #B7C6C2; --muted: #8B9C98; --line: #2A3735;
+    --accent: #8EB4F0; --accent-ink: #0E1413; --accent-soft: #1D2D45;
+    --vessel: #3A2225; --vessel-edge: #6E3C41; --vessel-line: #4E2D31;
+    --liver: #30231F; --liver-edge: #9D6B5B; --gut: #2E261E; --gut-edge: #A3804F; --fat: #2C2919; --fat-edge: #A8913F;
+    --tissue: #1C2A25; --tissue-edge: #6E9585; --intima: #321F27; --intima-edge: #A86A78;
+    --p-cm: #F1CE6A; --p-core: #FFF3C4; --p-vldl: #F59A4A; --p-idl: #EE7C51; --p-rem: #D8B25A; --p-ldl: #F25469; --p-ldl-ox: #B5636C;
+    --p-hdl: #3BCBB6; --p-ffa: #CDB05A; --p-pcsk9: #B18BF6; --p-bile: #9DC055; --p-stroke: rgba(255, 255, 255, 0.22);
+    --good: #6CC48D; --good-soft: #1B3326; --ok: #9CB8D6; --ok-soft: #1E2A37; --warn: #E3A94C; --warn-soft: #3A2D16; --bad: #F27D72; --bad-soft: #3E1F1C;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0E1413; --panel: #151D1C; --panel-2: #1B2524; --ink: #E3EBE9; --ink-2: #B7C6C2; --muted: #8B9C98; --line: #2A3735;
+  --accent: #8EB4F0; --accent-ink: #0E1413; --accent-soft: #1D2D45;
+  --vessel: #3A2225; --vessel-edge: #6E3C41; --vessel-line: #4E2D31;
+  --liver: #30231F; --liver-edge: #9D6B5B; --gut: #2E261E; --gut-edge: #A3804F; --fat: #2C2919; --fat-edge: #A8913F;
+  --tissue: #1C2A25; --tissue-edge: #6E9585; --intima: #321F27; --intima-edge: #A86A78;
+  --p-cm: #F1CE6A; --p-core: #FFF3C4; --p-vldl: #F59A4A; --p-idl: #EE7C51; --p-rem: #D8B25A; --p-ldl: #F25469; --p-ldl-ox: #B5636C;
+  --p-hdl: #3BCBB6; --p-ffa: #CDB05A; --p-pcsk9: #B18BF6; --p-bile: #9DC055; --p-stroke: rgba(255, 255, 255, 0.22);
+  --good: #6CC48D; --good-soft: #1B3326; --ok: #9CB8D6; --ok-soft: #1E2A37; --warn: #E3A94C; --warn-soft: #3A2D16; --bad: #F27D72; --bad-soft: #3E1F1C;
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 400 14px/1.55 var(--f-body); -webkit-font-smoothing: antialiased; }
+button, select, input { font: inherit; color: inherit; }
+.wrap { max-width: 1380px; margin: 0 auto; padding-block: 22px 44px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 16px; }
+h1, h2, h3 { font-family: var(--f-display); margin: 0; text-wrap: balance; letter-spacing: -0.01em; }
+h1 { font-size: clamp(26px, 3.2vw, 36px); font-weight: 700; line-height: 1.15; }
+h2 { font-size: 17px; font-weight: 700; line-height: 1.3; }
+p { margin: 0; }
+.eyebrow { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; color: var(--muted); }
+.num { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
+
+/* 머리 */
+.masthead { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 10px 32px; }
+.masthead > div { display: grid; gap: 6px; min-width: 0; max-width: 760px; }
+.lede { color: var(--ink-2); max-width: 64ch; }
+.source { font-size: 12px; color: var(--muted); max-width: 34ch; }
+
+/* 시나리오 레일 */
+.rail { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; }
+.rail-group { display: grid; gap: 6px; min-width: 0; }
+.rail-btns { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.scn { appearance: none; text-align: left; cursor: pointer; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); display: grid; gap: 2px; align-content: start; min-width: 0; transition: border-color .15s, background .15s; }
+.scn:hover { border-color: var(--accent); }
+.scn[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
+.scn-name { font-family: var(--f-display); font-weight: 700; font-size: 15px; line-height: 1.3; }
+.scn-cap { font-size: 12px; color: var(--muted); line-height: 1.35; }
+@media (max-width: 920px) { .rail { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 460px) { .scn { padding: 8px 9px; } .scn-name { font-size: 14px; } .scn-cap { font-size: 11.5px; } }
+
+/* 공통 카드 */
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; min-width: 0; }
+.card-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 12px; margin-bottom: 10px; }
+.hint { font-size: 12px; color: var(--muted); }
+
+/* 메인 그리드 */
+.stage-grid { display: grid; grid-template-columns: minmax(0, 1.8fr) minmax(300px, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 1040px) { .stage-grid { grid-template-columns: minmax(0, 1fr); } }
+.side { display: grid; gap: 16px; min-width: 0; }
+
+.stage { padding: 14px; display: grid; gap: 10px; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12.5px; color: var(--ink-2); }
+.lg { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.lg i { width: var(--s, 10px); height: var(--s, 10px); border-radius: 50%; background: var(--c); box-shadow: 0 0 0 1px var(--p-stroke); display: inline-block; }
+.lg b { font-family: var(--f-num); font-weight: 500; color: var(--muted); font-variant-numeric: tabular-nums; min-width: 2ch; }
+.canvas-box { position: relative; width: 100%; border-radius: 10px; background: var(--panel-2); overflow: hidden; }
+#map { display: block; width: 100%; height: auto; touch-action: manipulation; }
+.tip { position: absolute; z-index: 2; max-width: 280px; padding: 10px 12px; border-radius: 10px; background: var(--panel); border: 1px solid var(--line); box-shadow: 0 6px 24px rgba(0,0,0,.14); font-size: 12.5px; line-height: 1.5; pointer-events: none; }
+.tip b { display: block; font-family: var(--f-display); font-size: 14px; margin-bottom: 2px; }
+
+.controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; }
+.ctl-group { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.ctl-label { font-size: 12px; color: var(--muted); font-weight: 600; }
+.btn { appearance: none; cursor: pointer; border: 1px solid var(--line); background: var(--panel); border-radius: 8px; padding: 6px 11px; font-size: 13px; font-weight: 600; line-height: 1.2; }
+.btn:hover { border-color: var(--accent); }
+.btn-primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); min-width: 88px; }
+.btn:focus-visible, .seg button:focus-visible, select:focus-visible, input:focus-visible, .toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--panel); }
+.seg button { appearance: none; border: 0; background: transparent; cursor: pointer; padding: 6px 10px; font-size: 12.5px; font-weight: 600; color: var(--ink-2); border-left: 1px solid var(--line); }
+.seg button:first-child { border-left: 0; }
+.seg button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); }
+select { border: 1px solid var(--line); background: var(--panel); border-radius: 8px; padding: 6px 8px; font-size: 13px; }
+.check { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; }
+.check input { accent-color: var(--accent); width: 16px; height: 16px; }
+
+/* 혈중 지질 */
+.lrows { display: grid; }
+.lrow { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; grid-template-areas: "name val pill" "sub delta delta" "bar bar bar"; column-gap: 10px; row-gap: 3px; padding: 9px 0 11px; border-top: 1px solid var(--line); align-items: baseline; }
+.lrow:first-child { border-top: 0; padding-top: 2px; }
+.lname { grid-area: name; font-weight: 700; font-size: 14px; }
+.lsub { grid-area: sub; font-size: 11.5px; color: var(--muted); min-width: 0; }
+.lval { grid-area: val; text-align: right; white-space: nowrap; }
+.lval .num { font-size: 20px; font-weight: 600; }
+.lval small { font-size: 11px; color: var(--muted); margin-left: 3px; }
+.ldelta { grid-area: delta; text-align: right; font-size: 11.5px; color: var(--muted); white-space: nowrap; font-family: var(--f-num); font-variant-numeric: tabular-nums; }
+.ldelta b { font-weight: 600; color: var(--ink-2); }
+.ldelta b.up { color: var(--bad); }
+.ldelta b.down { color: var(--good); }
+.pill { grid-area: pill; justify-self: end; font-size: 11.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+.pill.good { background: var(--good-soft); color: var(--good); }
+.pill.ok { background: var(--ok-soft); color: var(--ok); }
+.pill.warn { background: var(--warn-soft); color: var(--warn); }
+.pill.bad { background: var(--bad-soft); color: var(--bad); }
+.lbar { grid-area: bar; position: relative; height: 8px; border-radius: 4px; background: var(--panel-2); margin-top: 4px; overflow: visible; }
+.lbar .band { position: absolute; top: 0; bottom: 0; opacity: .9; }
+.lbar .band.good { background: var(--good-soft); } .lbar .band.ok { background: var(--ok-soft); } .lbar .band.warn { background: var(--warn-soft); } .lbar .band.bad { background: var(--bad-soft); }
+.lbar .band:first-child { border-radius: 4px 0 0 4px; } .lbar .band:last-of-type { border-radius: 0 4px 4px 0; }
+.lbar .mk { position: absolute; top: -4px; width: 3px; height: 16px; margin-left: -1.5px; border-radius: 2px; background: var(--ink); transition: left .25s; }
+.lbar .gh { position: absolute; top: -3px; width: 9px; height: 14px; margin-left: -4.5px; border: 1.5px dashed var(--muted); border-radius: 3px; transition: left .25s; }
+.alert { margin-top: 10px; padding: 9px 11px; border-radius: 8px; background: var(--bad-soft); color: var(--bad); font-size: 12.5px; font-weight: 600; }
+.lnote { margin-top: 8px; font-size: 11.5px; color: var(--muted); }
+
+/* 기전 카드 */
+.mech { display: grid; gap: 10px; }
+.mech-sum { color: var(--ink-2); }
+.steps { margin: 0; padding: 0; list-style: none; counter-reset: st; display: grid; gap: 8px; }
+.steps li { counter-increment: st; display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 8px; font-size: 13px; line-height: 1.5; }
+.steps li::before { content: counter(st); font-family: var(--f-num); font-size: 11.5px; font-weight: 600; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: var(--panel-2); color: var(--ink-2); border: 1px solid var(--line); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 999px; background: var(--panel-2); border: 1px solid var(--line); color: var(--ink-2); }
+.point { font-size: 12.5px; padding: 10px 12px; border-radius: 8px; background: var(--accent-soft); color: var(--ink); }
+.point b { color: var(--accent); }
+.ref { font-size: 11.5px; color: var(--muted); }
+.custom-note { font-size: 12px; padding: 7px 10px; border-radius: 8px; background: var(--warn-soft); color: var(--warn); font-weight: 600; }
+
+/* 추세 */
+.trend-tools { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
+.series { display: flex; flex-wrap: wrap; gap: 6px; }
+.ser { appearance: none; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); font-size: 12.5px; font-weight: 600; color: var(--ink-2); }
+.ser i { width: 14px; height: 3px; border-radius: 2px; background: var(--c); }
+.ser[aria-pressed="false"] { opacity: .45; }
+.chart-box { position: relative; width: 100%; }
+#chart { display: block; width: 100%; height: 250px; }
+
+/* 하단 조절부 */
+.tune { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 16px; align-items: start; }
+@media (max-width: 900px) { .tune { grid-template-columns: minmax(0, 1fr); } }
+
+/* 환자 시나리오 */
+.rail-group.wide { grid-column: 1 / -1; }
+.rail-group.wide .rail-btns { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 620px) { .rail-group.wide .rail-btns { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.scn.pt .scn-cap { font-family: var(--f-num); font-size: 11.5px; }
+.acts { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.acts .hint { width: 100%; }
+.act[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.ltgt { grid-area: tgt; font-size: 11.5px; font-weight: 600; color: var(--accent); }
+.ltgt.ok { color: var(--good); }
+.lrow.has-tgt { grid-template-areas: "name val pill" "sub delta delta" "bar bar bar" "tgt tgt tgt"; }
+.lbar .tk { position: absolute; top: -5px; width: 2px; height: 18px; margin-left: -1px; background: var(--accent); }
+
+/* 약물 작용 지점 */
+.rx-key { display: flex; gap: 12px; font-size: 12px; color: var(--muted); }
+.rx-key i { font-style: normal; font-weight: 700; margin-right: 3px; }
+.k-x { color: var(--bad); } .k-up { color: var(--accent); }
+.rx-grid { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(300px, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 1040px) { .rx-grid { grid-template-columns: minmax(0, 1fr); } }
+.rx-map { overflow-x: auto; border-radius: 10px; background: var(--panel-2); }
+#rxSvg { display: block; width: 100%; min-width: 640px; height: auto; }
+#rxSvg text { font-family: var(--f-body); fill: var(--ink); font-size: 12px; }
+#rxSvg .rg { stroke-width: 1.3; }
+#rxSvg .rg-gut { fill: var(--gut); stroke: var(--gut-edge); }
+#rxSvg .rg-liver { fill: var(--liver); stroke: var(--liver-edge); }
+#rxSvg .rg-blood { fill: var(--vessel); stroke: var(--vessel-edge); }
+#rxSvg .rg-fat { fill: var(--fat); stroke: var(--fat-edge); }
+#rxSvg .rg-t { font-family: var(--f-display); font-weight: 700; font-size: 15px; }
+#rxSvg .sm { font-size: 11px; }
+#rxSvg .mu { fill: var(--muted); }
+#rxSvg .lbl { font-size: 12px; font-weight: 600; }
+#rxSvg .b { font-weight: 700; }
+#rxSvg .val { font-size: 11.5px; font-weight: 600; fill: var(--ink-2); font-variant-numeric: tabular-nums; }
+#rxSvg .node rect { fill: var(--panel); stroke: var(--line); }
+#rxSvg .node2 rect { fill: var(--panel); stroke: var(--ink-2); stroke-width: 1.1; }
+#rxSvg .enz rect { fill: var(--panel); stroke: var(--ink-2); stroke-width: 1.4; }
+#rxSvg .enz text, #rxSvg .tf2 text, #rxSvg .node2 text { font-weight: 700; }
+#rxSvg .blocked rect, #rxSvg rect.blocked, #rxSvg circle.blocked { stroke: var(--bad); stroke-dasharray: 4 3; fill: var(--bad-soft); }
+#rxSvg .tp { fill: var(--panel); stroke: var(--gut-edge); stroke-width: 2; }
+#rxSvg .tf { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.2; }
+#rxSvg .tf2 rect { fill: var(--panel); stroke: var(--ink-2); stroke-width: 1.2; }
+#rxSvg .boost rect, #rxSvg rect.boost { stroke: var(--accent); stroke-width: 2.6; }
+#rxSvg .nuc { fill: var(--panel); fill-opacity: .55; stroke: var(--liver-edge); stroke-dasharray: 3 3; }
+#rxSvg .pool { fill: var(--panel); stroke: var(--liver-edge); }
+#rxSvg .trk { fill: var(--panel-2); }
+#rxSvg .fill { fill: var(--accent); }
+#rxSvg .tick { stroke: var(--muted); stroke-width: 1.5; }
+#rxSvg .lyso { fill: var(--panel); stroke: var(--p-pcsk9); stroke-width: 1.6; }
+#rxSvg .ar { stroke: var(--ink-2); fill: none; stroke-width: 1.6; }
+#rxSvg .ar.dash { stroke-dasharray: 5 4; }
+#rxSvg .ar.deg { stroke: var(--p-pcsk9); }
+#rxSvg .ahd { fill: var(--ink-2); }
+#rxSvg .dt-chol { fill: var(--p-core); stroke: var(--gut-edge); }
+#rxSvg .pt-cm { fill: var(--p-cm); stroke: var(--p-stroke); }
+#rxSvg .pt-ldl { fill: var(--p-ldl); stroke: var(--p-stroke); }
+#rxSvg .pt-vldl { fill: var(--p-vldl); stroke: var(--p-stroke); }
+#rxSvg .pt-pcsk9 { fill: var(--p-pcsk9); stroke: var(--p-stroke); }
+#rxSvg .rcp { stroke: var(--liver-edge); stroke-width: 2.2; fill: none; stroke-linecap: round; }
+#rxSvg .ab path { stroke: var(--accent); stroke-width: 3; fill: none; stroke-linecap: round; }
+#rxSvg .xm line { stroke: var(--bad); stroke-width: 3.2; stroke-linecap: round; }
+#rxSvg .pin { cursor: pointer; outline: none; }
+#rxSvg .pin circle { fill: var(--panel); stroke: var(--accent); stroke-width: 1.8; }
+#rxSvg .pin .halo { fill: none; stroke: none; }
+#rxSvg .pin text { fill: var(--accent); font-family: var(--f-num); font-size: 13px; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+#rxSvg .pin.on circle:not(.halo) { fill: var(--accent); }
+#rxSvg .pin.on text { fill: var(--accent-ink); }
+#rxSvg .pin.sel .halo, #rxSvg .pin:focus-visible .halo { stroke: var(--accent); stroke-width: 2; stroke-dasharray: 3 3; }
+.rx-side { display: grid; gap: 12px; min-width: 0; }
+.rx-list { display: grid; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.rx-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 10px 6px 6px; border-top: 1px solid var(--line); background: var(--panel); }
+.rx-row:first-child { border-top: 0; }
+.rx-row.sel { background: var(--panel-2); }
+.rx-pick { appearance: none; border: 0; background: none; cursor: pointer; display: flex; align-items: center; gap: 8px; text-align: left; padding: 4px; border-radius: 6px; min-width: 0; flex: 1; }
+.rx-pick:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.rx-num { flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-family: var(--f-num); font-size: 12px; font-weight: 700; color: var(--accent); border: 1.5px solid var(--accent); }
+.rx-row.on .rx-num { background: var(--accent); color: var(--accent-ink); }
+.rx-name { font-weight: 700; font-size: 13.5px; line-height: 1.25; min-width: 0; }
+.rx-name small { display: block; font-weight: 400; font-size: 11.5px; color: var(--muted); }
+.rx-row .seg button { padding: 4px 8px; font-size: 12px; }
+.rx-detail { display: grid; gap: 10px; padding: 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
+.rx-detail h3 { font-size: 17px; }
+.rx-detail .steps li { font-size: 12.5px; }
+.rx-proj { display: grid; gap: 6px; padding: 10px 12px; border-radius: 8px; background: var(--panel-2); }
+.rx-proj table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.rx-proj th { text-align: right; font-weight: 600; font-size: 11px; color: var(--muted); padding: 2px 4px; }
+.rx-proj th:first-child, .rx-proj td:first-child { text-align: left; }
+.rx-proj td { text-align: right; padding: 3px 4px; font-family: var(--f-num); font-variant-numeric: tabular-nums; border-top: 1px solid var(--line); }
+.rx-proj td:first-child { font-family: var(--f-body); color: var(--ink-2); }
+.rx-proj tr.cur td { font-weight: 700; color: var(--ink); }
+.rx-proj .dd { font-size: 11px; color: var(--muted); margin-left: 4px; }
+.rx-proj .dd.good { color: var(--good); } .rx-proj .dd.bad { color: var(--bad); }
+.rx-meta { font-size: 12.5px; color: var(--ink-2); }
+.rx-meta b { color: var(--ink); margin-right: 4px; }
+.rx-model { font-size: 11.5px; color: var(--muted); }
+
+.gauges { display: grid; gap: 7px; }
+.gauge { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(70px, 1fr) 46px; gap: 10px; align-items: center; font-size: 12.5px; }
+.gauge .gl { min-width: 0; color: var(--ink-2); line-height: 1.3; }
+.gauge .gt { position: relative; height: 8px; border-radius: 4px; background: var(--panel-2); }
+.gauge .gt::after { content: ""; position: absolute; left: 50%; top: -3px; bottom: -3px; width: 1.5px; background: var(--muted); }
+.gauge .gf { position: absolute; top: 0; bottom: 0; border-radius: 4px; background: var(--accent); transition: left .2s, width .2s; }
+.gauge .gf.lo { background: var(--warn); }
+.gauge .gv { text-align: right; font-family: var(--f-num); font-variant-numeric: tabular-nums; font-size: 12px; color: var(--ink-2); }
+.gscale { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(70px, 1fr) 46px; gap: 10px; font-size: 10.5px; color: var(--muted); font-family: var(--f-num); }
+.gscale span:nth-child(2) { display: flex; justify-content: space-between; }
+
+.drugs { display: grid; gap: 10px; }
+.drug { display: grid; gap: 6px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
+.drug.on { border-color: var(--accent); background: var(--accent-soft); }
+.drug-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; }
+.drug-name { font-weight: 700; font-size: 14px; }
+.drug p { font-size: 12.5px; color: var(--ink-2); line-height: 1.5; }
+.toggle { appearance: none; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; border: 0; background: none; padding: 0; font-size: 12.5px; font-weight: 600; color: var(--ink-2); }
+.toggle .tr { width: 34px; height: 20px; border-radius: 999px; background: var(--line); position: relative; transition: background .15s; }
+.toggle .tr::after { content: ""; position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%; background: var(--panel); transition: left .15s; box-shadow: 0 1px 2px rgba(0,0,0,.25); }
+.toggle[aria-pressed="true"] .tr { background: var(--accent); }
+.toggle[aria-pressed="true"] .tr::after { left: 17px; }
+
+.dials { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 18px; }
+@media (max-width: 520px) { .dials { grid-template-columns: minmax(0, 1fr); } }
+.dial { display: grid; gap: 3px; min-width: 0; }
+.dial-top { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.dial-name { font-weight: 600; font-size: 13px; }
+.dial-name small { display: block; font-weight: 400; font-size: 11.5px; color: var(--muted); }
+.dial output { font-family: var(--f-num); font-variant-numeric: tabular-nums; font-size: 12.5px; color: var(--ink-2); white-space: nowrap; }
+.dial output.moved { color: var(--accent); font-weight: 600; }
+.dial input[type=range] { width: 100%; accent-color: var(--accent); margin: 2px 0 0; }
+
+footer { display: grid; gap: 8px; font-size: 12px; color: var(--muted); max-width: 980px; }
+footer b { color: var(--ink-2); }
+footer ol { margin: 0; padding-left: 18px; display: grid; gap: 2px; }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header class="masthead">
+    <div>
+      <p class="eyebrow">지단백 트럭으로 보는 콜레스테롤 물류</p>
+      <h1>콜레스테롤 대사 시뮬레이터</h1>
+      <p class="lede">간·소장·혈관을 오가는 지단백 입자를 따라가며 정상 상태, 식사, 포화지방, 대사 이상, 이상지질혈증 환자에서 LDL-C·TG·HDL-C가 왜, 얼마나 바뀌는지 보고, 약물이 어디서 어떻게 작용하는지 확인합니다.</p>
+    </div>
+    <p class="source">바탕 자료: 「이상지질혈증의 병태생리와 약물치료 — LDL·HDL 트럭 비유」 통합 가이드 (자료 기준일 2026.11.6)</p>
+  </header>
+
+  <nav class="rail" aria-label="시나리오">
+    <div class="rail-group">
+      <span class="eyebrow">생리 · 식사</span>
+      <div class="rail-btns">
+        <button class="scn" type="button" data-scn="normal" aria-pressed="true"><span class="scn-name">정상 상태</span><span class="scn-cap">생성과 제거의 균형</span></button>
+        <button class="scn" type="button" data-scn="meal" aria-pressed="false"><span class="scn-name">식사 후</span><span class="scn-cap">킬로미크론과 보상조절</span></button>
+        <button class="scn" type="button" data-scn="sfa" aria-pressed="false"><span class="scn-name">포화지방 과다</span><span class="scn-cap">LDL 회수 기능 저하</span></button>
+      </div>
+    </div>
+    <div class="rail-group">
+      <span class="eyebrow">콜레스테롤 대사 이상</span>
+      <div class="rail-btns">
+        <button class="scn" type="button" data-scn="obesity" aria-pressed="false"><span class="scn-name">비만·인슐린 저항성</span><span class="scn-cap">VLDL 과잉 + TG 처리 둔화</span></button>
+        <button class="scn" type="button" data-scn="meno" aria-pressed="false"><span class="scn-name">폐경</span><span class="scn-cap">에스트로겐↓ + 내장지방↑</span></button>
+        <button class="scn" type="button" data-scn="hypo" aria-pressed="false"><span class="scn-name">갑상선기능저하증</span><span class="scn-cap">생산보다 회수가 더 감소</span></button>
+      </div>
+    </div>
+    <div class="rail-group wide">
+      <span class="eyebrow">이상지질혈증 환자 · 가이드 상담 예시 A–D</span>
+      <div class="rail-btns">
+        <button class="scn pt" type="button" data-scn="ptA" aria-pressed="false"><span class="scn-name">A · 고LDL혈증</span><span class="scn-cap">LDL-C 190 · TG 110</span></button>
+        <button class="scn pt" type="button" data-scn="ptB" aria-pressed="false"><span class="scn-name">B · 혼합형</span><span class="scn-cap">TG 320 · HDL 35 · 복부비만</span></button>
+        <button class="scn pt" type="button" data-scn="ptC" aria-pressed="false"><span class="scn-name">C · 고중성지방혈증</span><span class="scn-cap">TG 1,200 · 췌장염 위험</span></button>
+        <button class="scn pt" type="button" data-scn="ptD" aria-pressed="false"><span class="scn-name">D · 이차예방</span><span class="scn-cap">심근경색 후 스타틴, LDL 85</span></button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="stage-grid">
+    <section class="card stage" aria-labelledby="mapTitle">
+      <div class="card-head" style="margin-bottom:0">
+        <h2 id="mapTitle">지단백 물류 지도</h2>
+        <div class="legend" id="legend" aria-label="화면 속 입자 수"></div>
+      </div>
+      <div class="canvas-box" id="mapBox">
+        <canvas id="map" role="img" aria-label="간, 소장, 지방·근육, 말초 조직, 동맥 내막을 잇는 혈관 도로 위를 지단백 입자가 순환하는 애니메이션"></canvas>
+        <div class="tip" id="tip" hidden></div>
+      </div>
+      <div class="controls">
+        <div class="ctl-group">
+          <button class="btn btn-primary" id="play" type="button">일시정지</button>
+          <button class="btn" id="restart" type="button">처음부터</button>
+          <button class="btn" id="skip" type="button">2주 건너뛰기</button>
+        </div>
+        <div class="ctl-group">
+          <span class="ctl-label" id="speedLbl">속도 (1초 =)</span>
+          <div class="seg" id="speed" role="group" aria-labelledby="speedLbl"></div>
+        </div>
+        <div class="ctl-group">
+          <label class="ctl-label" for="diet">식사</label>
+          <select id="diet">
+            <option value="normal">일반식</option>
+            <option value="egg">달걀 많은 식사</option>
+            <option value="sfa">버터·코코넛오일</option>
+            <option value="lowfat">초저지방식</option>
+          </select>
+          <button class="btn" id="eatNow" type="button">지금 식사</button>
+          <label class="check"><input type="checkbox" id="autoMeal" checked> 하루 세 끼</label>
+        </div>
+      </div>
+    </section>
+
+    <aside class="side">
+      <section class="card" aria-labelledby="lipTitle">
+        <div class="card-head">
+          <h2 id="lipTitle">혈중 지질</h2>
+          <span class="hint num" id="clockSide"></span>
+        </div>
+        <div class="lrows" id="lrows"></div>
+        <p class="alert" id="alert" hidden></p>
+        <p class="lnote">검은 막대 = 현재 값, 점선 상자 = 같은 식사를 한 정상 기준. LDL-C 구간은 한국 이상지질혈증 진료지침, TG 구간은 가이드 1.4절의 췌장염 위험 구간을 따릅니다.</p>
+      </section>
+
+      <section class="card mech" id="mech" aria-live="polite">
+        <div>
+          <p class="eyebrow" id="mechGroup"></p>
+          <h2 id="mechTitle"></h2>
+        </div>
+        <p class="custom-note" id="customNote" hidden>생리 다이얼을 직접 조정한 상태입니다. 아래 설명은 원래 시나리오 기준입니다.</p>
+        <p class="mech-sum" id="mechSum"></p>
+        <ol class="steps" id="mechSteps"></ol>
+        <div class="chips" id="mechPattern"></div>
+        <p class="point" id="mechPoint"></p>
+        <div class="acts" id="mechActs" hidden></div>
+        <p class="ref" id="mechRef"></p>
+      </section>
+    </aside>
+  </main>
+
+  <section class="card rx" aria-labelledby="rxTitle">
+    <div class="card-head">
+      <div>
+        <h2 id="rxTitle">약물 작용 지점과 기전</h2>
+        <p class="hint">도식의 번호나 약물 목록을 누르면 기전과 4주 뒤 예상 수치를 보여 줍니다. 좁은 화면에서는 도식을 좌우로 밀어 보세요. 스위치로 켠 약물은 위 지도·혈중 지질과 아래 그래프에 바로 반영됩니다.</p>
+      </div>
+      <div class="rx-key" aria-hidden="true"><span><i class="k-x">✕</i> 막는 지점</span><span><i class="k-up">↑</i> 강화하는 지점</span></div>
+    </div>
+    <div class="rx-grid">
+      <div class="rx-map">
+        <svg id="rxSvg" viewBox="0 0 820 480" role="img" aria-label="소장 상피세포, 간세포, 혈액, 지방세포, 모세혈관 LPL에서 이상지질혈증 약물 일곱 가지가 작용하는 지점">
+          <defs>
+            <marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ahd"></path></marker>
+          </defs>
+          <rect class="rg rg-gut" x="10" y="250" width="212" height="220" rx="16"></rect>
+          <text class="rg-t" x="26" y="276">소장 상피세포</text>
+          <rect class="rg rg-liver" x="236" y="12" width="366" height="364" rx="26"></rect>
+          <text class="rg-t" x="254" y="40">간세포</text>
+          <rect class="rg rg-blood" x="616" y="12" width="194" height="364" rx="18"></rect>
+          <text class="rg-t" x="632" y="40">혈액</text>
+          <rect class="rg rg-fat" id="sv-fat" x="236" y="392" width="366" height="78" rx="16"></rect>
+          <text class="rg-t" x="254" y="418">내장지방 · 지방세포</text>
+          <rect class="rg rg-fat" id="sv-lplBox" x="616" y="392" width="194" height="78" rx="16"></rect>
+          <text class="rg-t" x="632" y="418">모세혈관 LPL</text>
+
+          <!-- 소장 -->
+          <text class="sm" x="26" y="300">음식·담즙 콜레스테롤</text>
+          <circle class="dt-chol" cx="32" cy="334" r="4"></circle><circle class="dt-chol" cx="44" cy="346" r="4"></circle><circle class="dt-chol" cx="30" cy="356" r="4"></circle>
+          <line class="ar" x1="52" y1="345" x2="84" y2="345" marker-end="url(#ah)"></line>
+          <rect class="tp" id="sv-npc" x="88" y="322" width="26" height="46" rx="9"></rect>
+          <text class="lbl" x="101" y="388" text-anchor="middle">NPC1L1</text>
+          <line class="ar" id="sv-absArrow" x1="118" y1="345" x2="150" y2="345" marker-end="url(#ah)"></line>
+          <circle class="pt-cm" cx="172" cy="345" r="17"></circle>
+          <text class="sm" x="172" y="382" text-anchor="middle">킬로미크론</text>
+          <path class="ar" id="sv-remArrow" d="M172 327 C 172 292, 200 286, 250 288" marker-end="url(#ah)"></path>
+          <text class="sm" x="180" y="306">잔여물</text>
+          <path class="ar dash" d="M252 322 L 226 322" marker-end="url(#ah)"></path>
+          <text class="sm mu" x="196" y="338">담즙</text>
+          <text class="val" id="sv-absTxt" x="26" y="452">장 흡수 100%</text>
+
+          <!-- 간: 합성 경로 -->
+          <g class="node"><rect x="260" y="58" width="100" height="24" rx="12"></rect><text x="310" y="74" text-anchor="middle">아세틸-CoA</text></g>
+          <line class="ar" x1="310" y1="82" x2="310" y2="97" marker-end="url(#ah)"></line>
+          <g class="enz" id="sv-acly"><rect x="275" y="98" width="70" height="22" rx="6"></rect><text x="310" y="113" text-anchor="middle">ACLY</text></g>
+          <line class="ar" x1="310" y1="120" x2="310" y2="135" marker-end="url(#ah)"></line>
+          <g class="node"><rect x="260" y="136" width="100" height="24" rx="12"></rect><text x="310" y="152" text-anchor="middle">HMG-CoA</text></g>
+          <line class="ar" x1="310" y1="160" x2="310" y2="175" marker-end="url(#ah)"></line>
+          <g class="enz" id="sv-hmgcr"><rect x="250" y="176" width="120" height="22" rx="6"></rect><text x="310" y="191" text-anchor="middle">HMG-CoA 환원효소</text></g>
+          <line class="ar" x1="310" y1="198" x2="310" y2="213" marker-end="url(#ah)"></line>
+          <g class="node"><rect x="260" y="214" width="100" height="24" rx="12"></rect><text x="310" y="230" text-anchor="middle">메발론산 → …</text></g>
+          <line class="ar flow" id="sv-synArrow" x1="310" y1="238" x2="310" y2="272" marker-end="url(#ah)"></line>
+          <text class="val" id="sv-synTxt" x="320" y="260">합성 100%</text>
+
+          <!-- 간 콜레스테롤 풀 -->
+          <rect class="pool" x="252" y="274" width="160" height="60" rx="10"></rect>
+          <text class="lbl b" x="262" y="292">간 콜레스테롤 풀</text>
+          <rect class="trk" x="262" y="300" width="140" height="7" rx="3.5"></rect>
+          <rect class="fill" id="sv-poolFill" x="262" y="300" width="70" height="7" rx="3.5"></rect>
+          <line class="tick" x1="332" y1="297" x2="332" y2="310"></line>
+          <text class="sm mu" x="262" y="326">줄면 SREBP-2가 켜짐</text>
+          <text class="val" id="sv-poolTxt" x="402" y="292" text-anchor="end">100%</text>
+          <line class="ar" x1="448" y1="286" x2="416" y2="286" marker-end="url(#ah)"></line>
+          <text class="sm" x="452" y="290">LDL 회수</text>
+          <path class="ar dash" d="M396 274 C 410 230, 420 150, 454 114" marker-end="url(#ah)"></path>
+
+          <!-- 핵 -->
+          <circle class="nuc" cx="500" cy="140" r="76"></circle>
+          <text class="lbl mu" x="500" y="82" text-anchor="middle">핵</text>
+          <rect class="tf" id="sv-srebp" x="456" y="94" width="88" height="24" rx="12"></rect>
+          <text class="lbl b" x="500" y="110" text-anchor="middle">SREBP-2</text>
+          <text class="val" id="sv-srebpTxt" x="500" y="134" text-anchor="middle">100%</text>
+          <text class="sm" x="500" y="154" text-anchor="middle">LDLR 유전자 ↑</text>
+          <text class="sm" x="500" y="172" text-anchor="middle">PCSK9 유전자 ↑</text>
+          <g class="tf2" id="sv-ppar"><rect x="464" y="182" width="72" height="22" rx="11"></rect><text x="500" y="197" text-anchor="middle">PPAR-α</text></g>
+          <line class="ar" x1="560" y1="150" x2="594" y2="150" marker-end="url(#ah)"></line>
+
+          <!-- PCSK9 생성 · 분해 -->
+          <line class="ar" x1="520" y1="214" x2="520" y2="299" marker-end="url(#ah)"></line>
+          <g class="node2" id="sv-mrna"><rect x="446" y="300" width="96" height="22" rx="6"></rect><text x="494" y="315" text-anchor="middle">PCSK9 mRNA</text></g>
+          <line class="ar" id="sv-secArrow" x1="542" y1="311" x2="612" y2="311" marker-end="url(#ah)"></line>
+          <circle class="lyso" cx="556" cy="252" r="13"></circle>
+          <text class="sm" x="556" y="280" text-anchor="middle">리소좀</text>
+          <path class="ar dash deg" id="sv-degArrow" d="M598 222 C 590 236, 580 244, 570 248" marker-end="url(#ah)"></path>
+          <g id="sv-ldlr"></g>
+          <text class="val" id="sv-ldlrTxt" x="594" y="58" text-anchor="end">수용체 100%</text>
+
+          <!-- TG · VLDL -->
+          <g class="node2" id="sv-vldlNode"><rect x="420" y="344" width="140" height="24" rx="6"></rect><text x="490" y="360" text-anchor="middle">TG 합성 · VLDL 조립</text></g>
+          <line class="ar flow" id="sv-ffaArrow" x1="490" y1="392" x2="490" y2="370" marker-end="url(#ah)"></line>
+          <line class="ar flow" id="sv-vldlArrow" x1="560" y1="356" x2="634" y2="356" marker-end="url(#ah)"></line>
+
+          <!-- 혈액 -->
+          <text class="val" id="sv-ldlc" x="632" y="62">LDL-C 100</text>
+          <circle class="pt-ldl" cx="636" cy="98" r="7"></circle><circle class="pt-ldl" cx="650" cy="136" r="7"></circle><circle class="pt-ldl" cx="634" cy="176" r="7"></circle>
+          <text class="sm" x="666" y="140">LDL</text>
+          <circle class="pt-pcsk9" id="sv-pcsk9" cx="640" cy="296" r="9"></circle>
+          <text class="sm" x="656" y="300">PCSK9</text>
+          <path class="ar dash" d="M634 286 C 620 262, 616 236, 606 218" marker-end="url(#ah)"></path>
+          <text class="sm mu" x="650" y="250">수용체에 붙어</text>
+          <text class="sm mu" x="650" y="264">분해로 보냄</text>
+          <g id="sv-ab" class="ab" hidden><path d="M664 312 L 664 326 M664 312 L 656 304 M664 312 L 672 304"></path></g>
+          <text class="val" id="sv-pcskTxt" x="632" y="340">PCSK9 작용 100%</text>
+          <circle class="pt-vldl" cx="654" cy="356" r="10"></circle>
+          <text class="sm" x="670" y="360">VLDL</text>
+
+          <!-- 지방 · LPL -->
+          <text class="val" id="sv-ffaTxt" x="254" y="446">간으로 가는 유리지방산 100%</text>
+          <text class="sm mu" x="254" y="462" id="sv-irTxt">인슐린 저항성 0%</text>
+          <text class="val" id="sv-lplTxt" x="632" y="446">TG 분해 100%</text>
+          <text class="sm mu" x="632" y="462" id="sv-lplNote">ApoC-III가 LPL을 억제</text>
+
+          <!-- 막는 지점 표시 -->
+          <g class="xm" id="x-statin" hidden><line x1="296" y1="181" x2="324" y2="193"></line><line x1="296" y1="193" x2="324" y2="181"></line></g>
+          <g class="xm" id="x-bemp" hidden><line x1="298" y1="103" x2="322" y2="115"></line><line x1="298" y1="115" x2="322" y2="103"></line></g>
+          <g class="xm" id="x-eze" hidden><line x1="91" y1="333" x2="111" y2="357"></line><line x1="91" y1="357" x2="111" y2="333"></line></g>
+          <g class="xm" id="x-incl" hidden><line x1="482" y1="305" x2="506" y2="317"></line><line x1="482" y1="317" x2="506" y2="305"></line></g>
+          <g class="xm" id="x-pcsk9" hidden><line x1="632" y1="288" x2="648" y2="304"></line><line x1="632" y1="304" x2="648" y2="288"></line></g>
+
+          <!-- 약물 번호 -->
+          <g class="pin" data-drug="statin" transform="translate(392 187)" tabindex="0" role="button" aria-label="① 스타틴 기전 보기"><circle class="halo" r="17"></circle><circle r="12"></circle><text>1</text></g>
+          <g class="pin" data-drug="eze" transform="translate(70 318)" tabindex="0" role="button" aria-label="② 에제티미브 기전 보기"><circle class="halo" r="17"></circle><circle r="12"></circle><text>2</text></g>
+          <g class="pin" data-drug="pcsk9" transform="translate(690 312)" tabindex="0" role="button" aria-label="③ PCSK9 항체 기전 보기"><circle class="halo" r="17"></circle><circle r="12"></circle><text>3</text></g>
+          <g class="pin" data-drug="incl" transform="translate(428 311)" tabindex="0" role="button" aria-label="④ 인클리시란 기전 보기"><circle class="halo" r="17"></circle><circle r="12"></circle><text>4</text></g>
+          <g class="pin" data-drug="bemp" transform="translate(366 109)" tabindex="0" role="button" aria-label="⑤ 벰페도산 기전 보기"><circle class="halo" r="17"></circle><circle r="12"></circle><text>5</text></g>
+          <g class="pin" data-drug="fibrate" transform="translate(562 193)" tabindex="0" role="button" aria-label="⑥ 피브레이트 기전 보기"><circle class="halo" r="17"></circle><circle r="12"></circle><text>6</text></g>
+          <g class="pin" data-drug="wl" transform="translate(580 431)" tabindex="0" role="button" aria-label="⑦ 체중감량 기전 보기"><circle class="halo" r="17"></circle><circle r="12"></circle><text>7</text></g>
+        </svg>
+      </div>
+      <div class="rx-side">
+        <div class="rx-list" id="rxList"></div>
+        <div class="rx-detail" id="rxDetail" aria-live="polite"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="trendTitle">
+    <div class="card-head">
+      <div>
+        <h2 id="trendTitle">시간에 따른 변화</h2>
+        <p class="hint">실선 = 현재 시나리오, 점선 = 같은 시간에 같은 식사를 한 정상 기준. LDL 입자는 며칠에 걸쳐 교체되므로 새 평형까지 2~3주가 걸립니다.</p>
+      </div>
+      <div class="trend-tools">
+        <div class="series" id="series"></div>
+        <div class="seg" id="win" role="group" aria-label="표시 기간"></div>
+      </div>
+    </div>
+    <div class="chart-box"><canvas id="chart" role="img" aria-label="LDL-C, HDL-C, TG의 시간 경과 그래프"></canvas></div>
+  </section>
+
+  <section class="tune">
+    <section class="card" aria-labelledby="gTitle">
+      <div class="card-head">
+        <h2 id="gTitle">간·대사 조절 계기</h2>
+        <span class="hint">정상 공복 = 100%</span>
+      </div>
+      <div class="gauges" id="gauges"></div>
+      <div class="gscale" aria-hidden="true"><span></span><span><i>25%</i><i>100%</i><i>400%</i></span><span></span></div>
+    </section>
+
+    <section class="card dials-card" aria-labelledby="pTitle">
+      <div class="card-head">
+        <div>
+          <h2 id="pTitle">생리 다이얼</h2>
+          <p class="hint">시나리오가 바꾸는 값입니다. 직접 조정해 원인을 겹쳐 볼 수 있습니다.</p>
+        </div>
+        <button class="btn" id="resetDials" type="button">시나리오 값으로</button>
+      </div>
+      <div class="dials" id="dials"></div>
+    </section>
+  </section>
+
+  <footer>
+    <p><b>교육용 개념 모델입니다.</b> 간 콜레스테롤 풀–SREBP-2 되먹임, LDL 수용체·PCSK9, LPL 포화, CETP 교환을 단순한 미분방정식으로 묶고, 가이드의 경향(포화지방·비만·폐경·갑상선기능저하증의 지질 변화, 상담 예시 A–D의 수치, 스타틴 강도별 약 30%·50% 감소, 에제티미브 약 18~20%, PCSK9 항체 45~64%, 인클리시란 약 48~52%, 벰페도산 약 20%, 피브레이트 TG 25~50%, 체중감량 TG 20~30%)을 재현하도록 계수를 맞췄습니다. LDL 수용체 기능이 약한 환자(예시 A)에서는 수용체에 기대는 약의 반응이 평균보다 작게 나옵니다. 개별 환자의 수치 예측이나 처방 판단에 쓰지 마세요.</p>
+    <p>화면의 입자 수는 농도에 비례하도록 표시한 것이며, 혈관벽의 거품세포는 시뮬레이션 기간의 누적 노출을 개념적으로 보여 줍니다. 실제 죽상경화반은 수년~수십 년에 걸쳐 형성됩니다.</p>
+    <ol>
+      <li>2026 ACC/AHA Multisociety Guideline on the Management of Dyslipidemia.</li>
+      <li>AHA Science Advisory: Dietary cholesterol and cardiovascular risk.</li>
+      <li>Feingold KR. Hypertriglyceridemia / Effect of Endocrine Disorders on Lipids and Lipoproteins. Endotext.</li>
+      <li>SWAN: menopause transition and lipid/lipoprotein profile.</li>
+    </ol>
+  </footer>
+</div>
+
+<script>
+/*__MODEL__*/
+</script>
+<script>
+/*__APP__*/
+</script>
